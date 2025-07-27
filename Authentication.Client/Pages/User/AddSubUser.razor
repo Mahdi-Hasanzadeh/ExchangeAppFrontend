@@ -1,0 +1,228 @@
+﻿@page "/add-sub-user"
+@rendermode InteractiveWebAssembly
+@using Microsoft.AspNetCore.Authorization
+@using Shared.DTOs.UserDTOs
+@using Shared.Models
+@using Shared.Roles
+
+
+
+@if (!OperatingSystem.IsBrowser())
+{
+    <LoadingWithImage />
+}
+else
+{
+    <AuthorizeView Roles="@($"{UserRole.SuperAdmin}")">
+        <Authorizing>
+            <LoadingWithImage Content="در حال تایید هویت شما..." />
+        </Authorizing>
+        <NotAuthorized>
+            <NoPermission />
+        </NotAuthorized>
+        <Authorized Context="authContext">
+            <CustomToast />
+
+            <h3 class="text-2xl font-bold mb-4 text-white">ایجاد کاربر جدید</h3>
+
+
+            <div class="max-w-2xl mx-auto bg-white dark:bg-gray-100 p-6 rounded-lg shadow-md">
+                <button class="bg-red-600 mr-auto hover:bg-red-700 text-white px-4 py-2 rounded text-sm flex items-center" @onclick="NavigateToSubUsers">
+                     برگشت
+                    <i class="bi bi-arrow-left-circle mr-2 text-lg"></i>
+                </button>
+                <EditForm Model="newSubUser" OnValidSubmit="HandleValidSubmit" class="space-y-4">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-red-500" />
+
+                    <div>
+                        <label class="block text-gray-700 dark:text-slate-900">نام کاربری <span class="text-red-500 text-sm">*</span></label>
+                        <InputText @bind-Value="newSubUser.Username" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+                        <ValidationMessage For="() => newSubUser.Username" class="text-red-500 text-sm" />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 dark:text-slate-900">رمز عبور <span class="text-red-500 text-sm">*</span></label>
+                        <InputText type="password" @bind-Value="newSubUser.Password" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+                        <ValidationMessage For="() => newSubUser.Password" class="text-red-500 text-sm" />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 dark:text-slate-900">ایمیل</label>
+                        <InputText @bind-Value="newSubUser.Email" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+                        <ValidationMessage For="() => newSubUser.Email" class="text-red-500 text-sm" />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 dark:text-slate-900">نقش <span class="text-red-500 text-sm">*</span></label>
+                        <InputSelect @bind-Value="newSubUser.Role" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none">
+                            @foreach (UserRole role in Enum.GetValues(typeof(UserRole)))
+                            {
+                                @if (role != UserRole.Owner)
+                                {
+                                    <option value="@role">@Expressions.UserRoleDictionary[role]</option>
+                                }
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => newSubUser.Role" class="text-red-500 text-sm" />
+                    </div>
+
+                    <!-- Image Upload Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 dark:text-slate-900">آپلود تصویر</label>
+                            <UploadButton SelectedFileName="@_selectedFileName" OnChange="@HandleImageChange" />
+                            <ValidationMessage For="() => newSubUser.Image" class="text-red-500 text-sm" />
+                        </div>
+                        <div>
+                            @if (!string.IsNullOrEmpty(_previewImage))
+                            {
+                                <img src="@_previewImage" alt="پیش‌نمایش" class="mt-2 rounded-md shadow-md w-32 h-32 object-cover" />
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex justify-start gap-4 mt-6">
+                        <MdSuccessButton IsDisabled="@_isDisabled" ButtonType="submit" Content="ثبت کاربر" />
+                        <MdDangerButton ButtonType="reset" OnClick="@ResetForm" Content="انصراف" />
+                    </div>
+                </EditForm>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+}
+
+
+
+@code {
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState> _state { get; set; }
+
+    private SubUserDTO newSubUser = new();
+
+    private int _userId { get; set; }
+
+    private string? _jwtToken { get; set; }
+
+    private bool _isAuthenticated { get; set; }
+
+    private bool _isDisabled = false;
+
+    private string _selectedFileName = "هیچ فایلی انتخاب نشده است";
+
+    private string? _previewImage;
+
+    #endregion
+
+    #region Private Methods
+
+    private void ResetForm()
+    {
+        newSubUser = new SubUserDTO();
+        _previewImage = null;
+        _selectedFileName = "هیچ فایلی انتخاب نشده است";
+    }
+
+    private async Task HandleImageChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+
+            // ✅ Update the displayed file name
+            _selectedFileName = file.Name;
+
+            // ✅ Validate Image Size (Max 5MB)
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                toastService.ShowError("حجم تصویر نباید بیشتر از 5 مگابایت باشد.");
+                // _errorMessage = "حجم تصویر نباید بیشتر از 5 مگابایت باشد.";
+                _previewImage = null;
+                return;
+            }
+
+            // ✅ Read Image as Byte Array
+            using (var stream = new MemoryStream())
+            {
+                await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+                newSubUser.Image = stream.ToArray();
+            }
+
+            // ✅ Generate Base64 Preview
+            _previewImage = $"data:{file.ContentType};base64,{Convert.ToBase64String(newSubUser.Image)}";
+
+            // _errorMessage = null; Clear error if successful
+            StateHasChanged(); // Ensure the UI updates after file selection
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError("در آپلود تصویر خطای رخ داده است");
+        }
+
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _isDisabled = true;
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+             AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            var response = await _httpClient.PostAsJsonAsync("api/User/registerSubUser", newSubUser);
+            var subUser = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            if (!response.IsSuccessStatusCode || response == null)
+            {
+                toastService.ShowError(subUser.Message);
+                return;
+            }
+
+            if (subUser.Success)
+            {
+                toastService.ShowSuccess("کاربر با موفقیت افزوده شد.");
+                newSubUser = new(); // Reset form
+            }
+            else
+            {
+                toastService.ShowError(subUser.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+            _isDisabled = false;
+        }
+    }
+
+    private void NavigateToSubUsers()
+    {
+        Navigation.NavigateTo("settings/subUsers");
+    }
+
+    #endregion
+
+    #region Life Cycle Methods
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticatedUser = await _state;
+        _isAuthenticated = authenticatedUser.User.Identity.IsAuthenticated;
+
+        if (!_isAuthenticated)
+        {
+            return;
+        }
+        _userId = int.Parse(authenticatedUser.ExtractUserIdFromToken());
+        _jwtToken = authenticatedUser.ExtractJWTFromToken();
+    }
+
+    #endregion
+
+}

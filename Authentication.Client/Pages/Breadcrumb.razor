@@ -1,0 +1,33 @@
+﻿<div class="mb-6">
+    <nav class="flex" aria-label="breadcrumb">
+        <ol class="flex items-center flex-wrap gap-2 text-base">
+            @for (int i = 0; i < Items.Count; i++)
+            {
+                var item = Items[i];
+                var isLast = i == Items.Count - 1;
+
+                <li class="flex items-center gap-2">
+                    @if (!isLast)
+                    {
+                        <div class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-gray-700 font-medium hover:bg-white hover:border-gray-400 hover:text-black transition-all duration-200">
+                            @item.Text
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    }
+                    else
+                    {
+                        <span class="px-3 py-1 rounded-md border border-gray-400 bg-white text-black font-semibold cursor-default">
+                            @item.Text
+                        </span>
+                    }
+                </li>
+            }
+        </ol>
+    </nav>
+</div>
+
+@code {
+    [Parameter] public List<BreadcrumbItem> Items { get; set; } = new();
+}

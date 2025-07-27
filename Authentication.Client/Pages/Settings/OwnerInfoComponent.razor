@@ -1,0 +1,202 @@
+﻿@page "/settings/owner-info"
+@using Microsoft.AspNetCore.Authorization
+@rendermode InteractiveWebAssembly
+
+<AuthorizeView Roles="@($"{UserRole.SuperAdmin}")">
+    <Authorizing>
+        <LoadingWithImage Content="در حال تایید هویت شما..." />
+    </Authorizing>
+
+    <NotAuthorized>
+        <NoPermission />
+    </NotAuthorized>
+
+    <Authorized Context="authContext">
+        <CustomToast />
+        <section class="bg-white rounded-2xl shadow-md p-8 border border-gray-200 max-w-4xl mx-auto mt-6">
+            <header class="flex items-center justify-between mb-6">
+                <h2 class="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
+                    <i class="bi bi-person-vcard-fill text-indigo-600 text-2xl"></i>
+                    اطلاعات صرافی
+                </h2>
+            </header>
+
+            @if (_isLoading)
+            {
+                <LoadingTitle />
+            }
+            else
+            {
+                <EditForm Model="_ownerInfo" OnValidSubmit="HandleSubmit" class="space-y-6">
+                    <DataAnnotationsValidator />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Owner Name with inline validation -->
+                        <div>
+                            <label class="block mb-2 text-sm font-semibold text-gray-700">نام صرافی</label>
+                            <div class="relative">
+                                <InputText class="w-full border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none rounded-lg px-4 py-2 text-gray-800"
+                                @bind-Value="_ownerInfo.OwnerName" />
+                                <ValidationMessage For="() => _ownerInfo.OwnerName" class="text-red-500 text-sm" />
+                            </div>
+                        </div>
+
+                        <!-- Logo Upload with inline validation -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="relative">
+                                <label class="block text-gray-700 dark:text-slate-900">لوگوی صرافی</label>
+                                <UploadButton SelectedFileName="@_selectedFileName" OnChange="@HandleImageChange" />
+                                <ValidationMessage For="() => _ownerInfo.Logo" class="absolute -bottom-5 left-0 text-red-500 text-xs" />
+                            </div>
+                            <div>
+                                @if (!string.IsNullOrEmpty(_previewImage))
+                                {
+                                    <img src="@_previewImage" alt="پیش‌نمایش لوگو"
+                                    class="mt-2 rounded-md shadow-md w-32 h-32 object-cover border border-gray-200" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100">
+                        <button type="submit"
+                        class="inline-flex mt-4 items-center gap-2 bg-green-600 hover:bg-green-700 transition text-white font-medium px-6 py-2.5 rounded-lg shadow-md focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                            <i class="bi bi-save-fill text-lg"></i>
+                            ذخیره تغییرات
+                        </button>
+                    </div>
+                </EditForm>
+            }
+        </section>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState> _state { get; set; }
+
+    private OwnerInfo _ownerInfo = new();
+
+    private bool _isLoading = true;
+
+    private string? _previewImage;
+
+    private string? _jwtToken;
+
+    private int _userId { get; set; }
+
+    private bool _isAuthenticated { get; set; }
+
+    private string _selectedFileName = string.Empty;
+
+    #endregion
+
+    #region Private Methods
+
+    private async Task LoadOwnerInfo()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<OwnerInfo>>("api/Settings/OwnerInfo");
+
+            if (response != null && response.Success)
+            {
+                if (response.Data != null)
+                {
+                    _ownerInfo = response.Data;
+
+                    if (_ownerInfo.Logo != null && !string.IsNullOrEmpty(_ownerInfo.LogoContentType))
+                    {
+                        _previewImage = $"data:{_ownerInfo.LogoContentType};base64,{Convert.ToBase64String(_ownerInfo.Logo)}";
+                    }
+                }
+            }
+            else
+            {
+                toastService.ShowError(response.Message);
+            }
+        }
+        catch
+        {
+            toastService.ShowError("خطا در دریافت اطلاعات");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleImageChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        var (imageData, preview, error) = await ImageHelper.HandleImageUploadAsync(file);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            toastService.ShowError(error);
+            return;
+        }
+
+        _ownerInfo.Logo = imageData;
+        _ownerInfo.LogoContentType = file.ContentType;
+        _previewImage = preview;
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/Settings/OwnerInfo", _ownerInfo);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            if (response.IsSuccessStatusCode && result.Success)
+            {
+                toastService.ShowSuccess("اطلاعات با موفقیت ذخیره شد");
+            }
+            else
+            {
+                toastService.ShowError("خطا در ذخیره اطلاعات");
+                toastService.ShowError(result.Message);
+            }
+        }
+        catch
+        {
+            toastService.ShowError("خطای سرور");
+        }
+    }
+
+    #endregion
+
+    #region Life Cycles Mehtods
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticatedUser = await _state;
+
+        _isAuthenticated = authenticatedUser.User.Identity.IsAuthenticated;
+
+        if (!_isAuthenticated)
+        {
+            return;
+        }
+        var user = authenticatedUser.User;
+        if (user.IsInRole("SuperAdmin"))
+        {
+            _userId = int.Parse(authenticatedUser.ExtractUserIdFromToken());
+            _jwtToken = authenticatedUser.ExtractJWTFromToken();
+
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            await LoadOwnerInfo();
+        }
+    }
+
+    #endregion
+
+}

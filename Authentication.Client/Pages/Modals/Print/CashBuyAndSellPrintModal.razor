@@ -1,0 +1,139 @@
+﻿@using Shared.DTOs.TransactionsDTOs
+@inject IJSRuntime JS
+
+<div class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm z-50 transition-opacity duration-300"
+style="opacity:@(IsVisible ? "1" : "0"); pointer-events: @(IsVisible ? "auto" : "none");">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-[90%] max-w-lg transform transition-all duration-300 scale-95 overflow-auto max-h-[90vh]"
+    style="transform: scale(@(IsVisible ? "1" : "0.95")); opacity: @(IsVisible ? "1" : "0");">
+
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center border-b pb-4">
+            <h5 class="text-xl font-semibold text-indigo-600">🖨️ رسید تراکنش</h5>
+            <button type="button" class="text-gray-500 hover:text-gray-700 transition-colors absolute top-3 left-3" @onclick="CloseModal">✖</button>
+        </div>
+
+        <div class="py-4 text-center" id="printContent">
+            <div class="mt-6 text-gray-700">
+                <table class="w-full border-collapse text-center text-md">
+                    @if (TransactionDetails.CustomerName != null)
+                    {
+                        <tr>
+                            <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">نام مشتری</td>
+                            <td style="padding: 12px; text-align: left; max-width: 300px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.CustomerName</td>
+                        </tr>
+                    }
+                    <tr style="background-color: #f0f0f0;">
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">ارز مبدا</td>
+                        <td style="padding: 12px; text-align: left; max-width: 300px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.SourceCurrencyName</td>
+                    </tr>
+
+                    <tr>
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">مقدار</td>
+                        <td style="padding: 12px; text-align: left; max-width: 300px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.Amount</td>
+                    </tr>
+
+                    <tr style="background-color: #f0f0f0;">
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">ارز مقصد</td>
+                        <td colspan="3" style="padding: 12px; text-align: left; max-width: 400px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.TargetCurrencyName</td>
+                    </tr>
+
+                    <tr>
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">مقدار تبدیل شده</td>
+                        <td style="padding: 12px; text-align: left; max-width: 300px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.ConvertedAmount</td>
+                    </tr>
+
+                    <tr style="background-color: #f0f0f0;">
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">نوع تراکنش</td>
+                        <td colspan="3" style="padding: 12px; text-align: left; max-width: 400px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.TransactionType</td>
+                    </tr>
+
+                    <tr>
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">شرح</td>
+                        <td colspan="3" style="padding: 12px; text-align: left; max-width: 400px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.Description</td>
+                    </tr>
+
+                    <tr style="background-color: #f0f0f0;">
+                        <td style="font-weight: bold; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">تاریخ</td>
+                        <td colspan="3" style="padding: 12px; text-align: left; max-width: 400px; word-break: break-word; border: 1px solid gray;">@TransactionDetails.CreatedDate</td>
+                    </tr>
+
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex flex-wrap justify-center space-x-2 gap-2 border-t pt-3">
+            <DangerButton ButtonType="button" OnClick="CloseModal" Content="انصراف" />
+            <SuccessButton ButtonType="button" OnClick="Print" Content="چاپ" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public BuyAndSellTransactionForPrint TransactionDetails { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsVisible { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState?> authState { get; set; }
+
+    private OwnerInfo _ownerInfo = new();
+
+    private bool isAuthenticated;
+
+    private string? _jwtToken;
+
+    private int _userId { get; set; }
+
+
+    public void Show()
+    {
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        IsVisible = false;
+        OnClose.InvokeAsync();
+    }
+
+    private async Task LoadOwnerInfo()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<OwnerInfo>>("api/Settings/OwnerInfo");
+
+            if (response != null && response.Success)
+            {
+                if (response.Data != null)
+                {
+                    _ownerInfo = response.Data;
+                }
+            }
+            else
+            {
+                toastService.ShowError(response.Message);
+            }
+        }
+        catch
+        {
+            toastService.ShowError("خطا در دریافت اطلاعات");
+        }
+    }
+
+    private async Task Print()
+    {
+        await LoadOwnerInfo();
+
+        var ownerName = _ownerInfo.OwnerName;
+        var logo = _ownerInfo.Logo == null ? null : _ownerInfo.Logo.ConvertByteArrayToImage();
+
+
+
+        await JS.InvokeVoidAsync("printElement", "printContent",ownerName,logo);
+    }
+}

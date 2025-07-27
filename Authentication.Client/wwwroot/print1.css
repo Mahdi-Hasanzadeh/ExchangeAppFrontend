@@ -1,0 +1,153 @@
+﻿/* Print Styles */
+@media print {
+    @page {
+        size: A4 portrait; /* Portrait mode */
+        margin: 10mm !important; /* Adjust margin to fit content */
+    }
+
+    body {
+        font-family: "Arial", sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .page {
+        width: 100% !important;
+        padding: 10px !important;
+        background: white !important;
+        border: 1px solid #eee !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+        /*        page-break-inside: avoid !important;*/
+        page-break-before: avoid !important;
+        page-break-after: avoid !important;
+        margin-bottom: 10mm !important;
+        box-sizing: border-box !important;
+        height: auto !important;
+        /*        page-break-before: always !important;
+        page-break-after: always !important;*/
+        /*height: 100%;*/ /* Ensure content fits the page */
+    }
+
+    /* Header */
+    .header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px !important;
+        border-bottom: 2px solid #FFA500 !important;
+        /*        page-break-inside: avoid !important;*/
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        /*        page-break-before: always !important;*/
+    }
+
+        .header .company-name {
+            font-size: 22px !important;
+            font-weight: bold !important;
+            color: #4A90E2 !important;
+            text-align: right !important;
+        }
+
+        .header .logo {
+            width: 80px !important;
+        }
+
+    /* Content Section */
+    .content {
+        padding: 8px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        /*overflow: hidden !important;*/ /* Prevent overflow */
+        page-break-inside: avoid !important; /* Prevent page breaks inside content */
+    }
+
+    .receipt-header {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        color: #4A90E2 !important;
+        margin-bottom: 15px !important;
+        text-align: center !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+    }
+
+    .receipt-content {
+        text-align: right !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        margin-bottom: 10px !important;
+        padding-left: 15px !important;
+    }
+
+    .receipt-footer {
+        margin-top: 16px !important;
+        text-align: center !important;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 24px !important;
+        text-align: center !important;
+        font-size: 12px !important;
+        color: #333 !important;
+        border-top: 2px solid #ddd !important;
+        margin-top: 10px !important;
+        page-break-after: avoid !important; /* Ensure footer appears after content */
+    }
+
+        .footer .signature {
+            font-size: 16px !important;
+            font-weight: bold !important;
+/*            margin-top: 8px !important;*/
+        }
+
+
+    .transaction-report-date{
+        text-align:right !important;
+    }
+    /* Table Styles */
+    table {
+        width: 100% !important;
+        padding: 5px;
+        border-collapse: collapse !important;
+        text-align: center !important;
+        direction: rtl !important;
+        font-size: 14px !important;
+        page-break-inside: avoid !important;
+        table-layout: fixed !important;
+        /*        overflow: hidden !important;*/
+        box-sizing: border-box !important;
+    }
+
+    td, th {
+        padding: 6px !important;
+        text-align: center !important;
+        word-wrap: break-word !important;
+        border: 1px solid gray !important;
+        overflow: hidden !important;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Prevent breaks in key sections */
+    .header, .content, .footer {
+        page-break-inside: avoid !important;
+    }
+
+    /* Scale to fit content on the page */
+    .page {
+        /*transform: scale(0.95);*/ /* Scale content down to fit */
+        /*transform-origin: top left;
+        width: 100% !important;
+        height: auto !important;*/
+    }
+}

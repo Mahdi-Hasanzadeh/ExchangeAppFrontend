@@ -1,0 +1,36 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@using Authentication.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using Shared
+@using Shared.Resources
+@using Shared.Roles
+@using Shared.DTOs
+@using Shared.Models
+@using Authentication.Client.Common
+@using Authentication.Client.ReusableComponent
+@using Shared.Enums
+@using Authentication.Client.Pages.Modals
+@using Shared.DTOs.CurrencyDTOs
+@using Authentication.Client.Pages.Forms
+@using Blazored.Toast
+@using Blazored.Toast.Services
+@using Authentication.Client.ReusableComponent.Toast
+@using Authentication.Client.Pages.Buttons
+@using Authentication.Client.Pages.Text
+
+
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Resource> localizer
+@inject HttpClient _httpClient
+@inject IToastService toastService
+
+
+

@@ -1,0 +1,278 @@
+﻿@page "/settings/subUsers"
+@rendermode InteractiveWebAssembly
+
+@using Shared.DTOs.UserDTOs
+@using Shared.Roles
+@using Microsoft.AspNetCore.Components.Authorization
+
+
+@if (!OperatingSystem.IsBrowser())
+{
+    <LoadingWithImage />
+}
+else
+{
+
+    <AuthorizeView Roles="@($"{UserRole.SuperAdmin}")">
+        <Authorizing>
+            <LoadingWithImage Content="در حال تایید هویت شما..." />
+        </Authorizing>
+        <NotAuthorized>
+            <NoPermission />
+        </NotAuthorized>
+        <Authorized Context="authContext">
+            <CustomToast />
+
+            <Modal @ref="modalRef"
+            ConfirmationMessage="آیا از حذف این مورد مطمئن هستید؟"
+            SubmitButtonText="حذف"
+            OnConfirm="DeleteUser" />
+
+
+            <h3 class="text-2xl font-bold mb-6 text-white">کاربران</h3>
+
+            <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-50 max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h4 class="text-xl font-semibold text-gray-900">لیست کاربران</h4>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center" @onclick="NavigateToAddUser">
+                        <i class="bi bi-plus-lg ml-2 text-lg"></i> افزودن کاربر جدید
+                    </button>
+                </div>
+
+                @if (_isLoading)
+                {
+                    <LoadingTitle />
+                }
+                else if (_subUsers == null || !_subUsers.Any())
+                {
+                    <NoDataFound Content="هیچ کاربری یافت نشد." />
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-gray-700 rtl text-right border border-gray-300 rounded-lg">
+                            <thead class="bg-gray-100 uppercase text-xs font-semibold text-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 border-b border-gray-300">نام کاربری</th>
+                                    <th class="px-4 py-3 border-b border-gray-300">نقش</th>
+                                    <th class="px-4 py-3 border-b border-gray-300">ایمیل</th>
+                                    <th class="px-4 py-3 border-b border-gray-300">تاریخ ایجاد</th>
+                                    <th class="px-4 py-3 border-b border-gray-300 text-center w-32">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in _subUsers)
+                                {
+                                    <tr class="hover:bg-gray-100 border-b border-gray-300">
+                                        <td class="px-4 py-2">@user.Username</td>
+                                        <td class="px-4 py-2">@Expressions.UserRoleDictionary[user.Role]</td>
+                                        <td class="px-4 py-2">@user.Email</td>
+                                        <td class="px-4 py-2">@user.CreatedDate.ToAfghanistanCalendarDateOnly()</td>
+                                        <td class="px-4 py-2 text-center space-x-2 rtl:space-x-reverse">
+                                            <div class="flex flex-row content-between gap-2">
+
+                                            <EditIconButton Disabled="_isDisabled" Content="ویرایش" OnClick="EditUser" Parameter="@user.Id" ButtonWidth="4rem" />
+                                            <DeleteIconButton Disabled="_isDisabled" Content="حذف" OnClick="OpenModal" Parameter="@user.Id" ButtonWidth="4rem" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            @if (_showEditForm && _selectedUserForEdit != null)
+            {
+                @if (_showEditForm && _selectedUserForEdit != null)
+                {
+                    <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center transition-opacity duration-300 ease-in-out">
+
+                        <div class="bg-gray-100 rounded-lg shadow-lg max-w-2xl w-full p-6 relative z-50 overflow-y-auto max-h-[90vh]">
+                            <div>
+                                <h2 class="text-xl font-semibold mb-4 text-slate-900">ویرایش کاربر</h2>
+                            </div>
+
+                            <EditSubUser EditableSubUser="_selectedUserForEdit"
+                            OnEditCompleted="HandleEditCompleted" />
+                        </div>
+                    </div>
+                }
+            }
+        </Authorized>
+    </AuthorizeView>
+}
+
+@code {
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState> _state { get; set; }
+
+    private List<SubUserDTO>? _subUsers;
+
+    private SubUserDTO newSubUser = new();
+
+    private bool _isLoading = true;
+
+    private string? _jwtToken;
+
+    private int _userId { get; set; }
+
+    private bool _isAuthenticated { get; set; }
+
+    private EditSubUserDTO? _selectedUserForEdit;
+
+    private bool _showEditForm = false;
+
+    private Modal modalRef;
+
+    private int _subUserIdToDelete;
+
+    private bool _isDisabled = false;
+
+    #endregion
+
+    #region Private Methods
+
+    private async Task LoadSubUsers()
+    {
+        try
+        {
+            _isLoading = true;
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<SubUserDTO>>>($"api/User/getSubUsers/{_userId}");
+
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(response?.Message!);
+                return;
+            }
+            _subUsers = response.Data;
+        }
+        catch
+        {
+            toastService.ShowError("خطا در بارگذاری کاربران. لطفاً دوباره تلاش کنید.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OpenModal(int subUserId)
+    {
+        _subUserIdToDelete = subUserId;
+        string customMessage = $"کاربر به صورت دایمی حذف میشود!";
+
+        await modalRef.ShowModal(customMessage);
+    }
+
+    private void EditUser(int userId)
+    {
+        var user = _subUsers?.FirstOrDefault(u => u.Id == userId);
+        if (user != null)
+        {
+            // Optionally fetch fresh data from API if you want:
+            // var response = await _httpClient.GetFromJsonAsync<ApiResponse<SubUserDTO>>($"api/User/getUserById/{userId}");
+            // if (response?.Success == true) user = response.Data;
+
+            _selectedUserForEdit = new EditSubUserDTO
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = user.Role,
+                    Image = user.Image,
+                    Password = user.Password,
+                };
+            _showEditForm = true;
+        }
+    }
+
+    private async Task HandleEditCompleted(bool saved)
+    {
+        _showEditForm = false;
+        _selectedUserForEdit = null;
+
+        if (saved)
+        {
+            // toastService.ShowSuccess("اطلاعات با موفقیت ذخیره شد.");
+            await LoadSubUsers(); // Refresh the list
+        }
+    }
+
+    private void CloseEditForm()
+    {
+        _showEditForm = false;
+        _selectedUserForEdit = null;
+    }
+
+    private async Task OnUserSaved()
+    {
+        _showEditForm = false;
+        _selectedUserForEdit = null;
+        await LoadSubUsers(); // refresh list after saving changes
+    }
+
+    private async Task DeleteUser()
+    {
+        try
+        {
+            _isDisabled = true;
+            var url = $"api/User/deleteSubUser/{_subUserIdToDelete}";
+            var response = await _httpClient.DeleteFromJsonAsync<ApiResponse<bool>>(url);
+            if (!response.Success || response == null)
+            {
+                toastService.ShowError(response.Message);
+                return;
+            }
+
+            var subUser = _subUsers.FirstOrDefault(c => c.Id == _subUserIdToDelete);
+            _subUsers.Remove(subUser);
+            StateHasChanged();
+
+            toastService.ShowSuccess("کاربر با موفقیت حذف شد.");
+
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+            _isDisabled = false;
+        }
+    }
+
+    private void NavigateToAddUser()
+    {
+        Navigation.NavigateTo("/add-sub-user");
+    }
+
+    #endregion
+
+    #region Life Cycle Methods
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticatedUser = await _state;
+        _isAuthenticated = authenticatedUser.User.Identity.IsAuthenticated;
+
+        if (!_isAuthenticated)
+        {
+            return;
+        }
+        _userId = int.Parse(authenticatedUser.ExtractUserIdFromToken());
+        _jwtToken = authenticatedUser.ExtractJWTFromToken();
+
+        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+             AuthenticationHeaderValue("Bearer", _jwtToken);
+
+        await LoadSubUsers();
+    }
+
+    #endregion
+
+}

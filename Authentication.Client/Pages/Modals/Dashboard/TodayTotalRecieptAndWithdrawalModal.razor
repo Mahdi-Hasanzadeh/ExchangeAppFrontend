@@ -1,0 +1,176 @@
+﻿<div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 transition-opacity duration-300 ease-in-out"
+@onclick="HandleBackgroundClick"
+style="opacity: @(isModalOpen ? "1" : "0"); pointer-events:@(isModalOpen ? "auto" : "none");">
+
+    <div class="relative bg-white shadow-2xl rounded-2xl p-8 w-full max-w-4xl max-h-[75dvh] md:max-h-[91dvh] overflow-y-auto
+            transform transition-all duration-500 ease-out"
+    style="transform: @(isModalOpen ? "scale(1)" : "scale(0)");"
+    @onclick:stopPropagation="true">
+
+        <!-- Close Button -->
+        <div class="text-left">
+            <button @onclick="CloseModal" class="relative -top-5 -left-5 text-gray-600 dark:text-black hover:text-red-500 transition">✕</button>
+        </div>
+
+        <!-- Title -->
+        <h3 class="mb-4 text-right text-2xl font-bold">
+            @_title
+        </h3>
+
+        <hr class="relative my-4 z-0 opacity-75 border-slate-500">
+
+        @if (_loadingBalances)
+        {
+            <LoadingTitle Content="در حال بارگیری..." />
+        }
+
+        else if (_currencyDeposits == null || !_currencyDeposits.Any())
+        {
+            <p class="text-center text-xl text-gray-500 mt-10">شما امروز هیچ رسید یا برداشتی انجام نداده‌اید.</p>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach (var currency in _currencyDeposits)
+                {
+                    <div class="dash-card relative group rounded-xl p-4 flex flex-col items-center text-center shadow-md border border-gray-200">
+
+                        <!-- Currency Icon -->
+                        <div class="icon-container-currency text-white flex items-center justify-center mb-2">
+                            <img src="@(currency.CurrencyFlag != null ? currency.CurrencyFlag.ConvertByteArrayToImage() : "images/defaultMoney.jpeg")" class="w-12 h-12 object-cover rounded-full border-2 border-white" />
+                        </div>
+
+                        <!-- Currency Name -->
+                        <p class="text-lg font-extrabold mb-3 tracking-wide">
+                            @currency.CurrencyName
+                            <span class="text-base font-semibold inline-flex items-center ml-1">
+                                (@currency.CurrencyCode)
+                            </span>
+                        </p>
+
+                        <!-- Deposit + Withdraw side by side -->
+                        <div class="grid grid-cols-2 gap-2 w-full text-center mt-2">
+
+                            <!-- Deposit -->
+                            <div class="flex flex-col items-center justify-center bg-green-50 p-2 rounded-lg">
+                                <i class="bi bi-arrow-down-circle text-green-700 mb-1" style="font-size: 1.4rem;"></i>
+                                <span class="text-sm font-bold text-green-700">مجموع رسید</span>
+                                <span class="text-base font-extrabold text-green-900">@currency.TotalDeposit.ToString("N0")</span>
+                            </div>
+
+                            <!-- Withdraw -->
+                            <div class="flex flex-col items-center justify-center bg-red-50 p-2 rounded-lg">
+                                <i class="bi bi-arrow-up-circle text-red-700 mb-1" style="font-size: 1.4rem;"></i>
+                                <span class="text-sm font-bold text-red-700">مجموع برداشت</span>
+                                <span class="text-base font-extrabold text-red-900">@currency.TotalWithdraw.ToString("N0")</span>
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+            </div>
+
+        }
+    </div>
+</div>
+
+@code {
+
+    #region Public fields
+
+    [Parameter]
+    public bool isModalOpen { get; set; } = false;
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    #endregion
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState> _authenticationState { get; set; }
+
+    private string _title = "مجموع رسید و برداشت(امروز)";
+
+
+
+    private bool _loadingBalances { get; set; } = false;
+
+    private string _errorMessage = "";
+
+    private int _userId { get; set; }
+
+    private string _jwtToken { get; set; }
+
+    private bool _isAuthenticated { get; set; }
+
+    private List<CurrencyDepositWithdrawDTO> _currencyDeposits = new();
+
+    #endregion
+
+    #region Private Methods
+
+    private async Task CloseModal()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private void HandleBackgroundClick(MouseEventArgs e)
+    {
+        CloseModal();
+    }
+
+    private async Task FetchTotalDepositWithdraw()
+    {
+        try
+        {
+            _loadingBalances = true;
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            // Fetch All currencies
+            string url = $"api/CustomerTransaction/totalDepositAndWithdrawPerCurrency";
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<CurrencyDepositWithdrawDTO>>>(url);
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.FailedToLoadCurrencies)]);
+                return;
+            }
+            _currencyDeposits = response.Data;
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+            _loadingBalances = false;
+        }
+    }
+
+    #endregion
+
+    #region Lifecycle Methods
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticatedUser = await _authenticationState;
+        _isAuthenticated = authenticatedUser.User.Identity.IsAuthenticated;
+        if (!_isAuthenticated)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.NotAuthenticated)]);
+            return;
+        }
+        _userId = int.Parse(authenticatedUser.ExtractUserIdFromToken());
+        _jwtToken = authenticatedUser.ExtractJWTFromToken();
+
+        await FetchTotalDepositWithdraw();
+    }
+
+
+    #endregion
+
+}

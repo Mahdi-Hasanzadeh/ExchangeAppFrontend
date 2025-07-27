@@ -1,0 +1,422 @@
+﻿@using Authentication.Client.Pages.Account
+@rendermode InteractiveWebAssembly
+
+
+<nav class="dark:bg-gray-800 sticky w-full z-20 top-0 start-0 border-b border-gray-200 dark:border-gray-600">
+    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+
+        @if (isAuthenticated)
+        {
+            <div class="flex space-x-3 md:space-x-0 rtl:space-x-reverse">
+                <button @onclick="handleDrawer"
+                type="button"
+                class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg  hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+                aria-controls="navbar-sticky"
+                aria-expanded="@isMenuOpen">
+                    <span class="sr-only">Open main menu</span>
+                    <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15" />
+                    </svg>
+                </button>
+            </div>
+        }
+
+
+        <NavLink href="" class="flex items-center space-x-3 rtl:space-x-reverse">
+            <img src="images/logo1.webp" class="h-12 w-12 rounded-full" alt="Exchange app logo">
+            <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">صرافی</span>
+        </NavLink>
+
+        <!-- Navigation Menu -->
+        <div class="items-center justify-between w-full md:flex md:w-auto hidden" id="navbar-sticky">
+
+            <ul class="flex flex-row items-center  border-gray-100 rounded-lg bg-gray-50 space-x-8 rtl:space-x-reverse dark:bg-gray-800">
+
+                @if (isAuthenticated)
+                {
+                    <li>
+                        <CurrentUser />
+                    </li>
+                    <li>
+                        <CustomNavLink FontSize="medium" Title="خروج" Href="/logout" />
+                        @* <NavLink href="/logout"
+                                     class="py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-blue-500 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">
+                                خروج
+                            </NavLink> *@
+                    </li>
+                }
+                else
+                {
+                    <li>
+                        <CustomNavLink FontSize="medium" Title="ورود" Href="/login" />
+                    </li>
+
+                    <li>
+                        <CustomNavLink FontSize="medium" Title="ثبت نام" Href="/register" />
+                    </li>
+                }
+                <AuthorizeView>
+                    <NotAuthorized>
+
+                    </NotAuthorized>
+                    <Authorized>
+                    </Authorized>
+
+                </AuthorizeView>
+            </ul>
+        </div>
+        <!-- Drawer -->
+        @if (isAuthenticated)
+        {
+            <div class=" @(Drawer ? "relative" : "hidden") transition delay-500 duration-2000 ease-in-out  z-10" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+
+                <div class="fixed inset-0 bg-white/25 backdrop-blur-sm backdrop-saturate-150 border border-white/40 shadow-lg "
+                aria-hidden="true"></div>
+
+
+                <div class="fixed inset-0 overflow-hidden">
+                    <div class="absolute inset-0 overflow-hidden">
+                        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+
+                            <div class="pointer-events-auto relative w-screen max-w-md">
+
+                                <div @onclick="handleDrawer" class="absolute left-0 top-0 -ml-8 flex pr-2 pt-4 sm:-ml-10 sm:pr-4">
+                                    <button type="button" class="relative rounded-md text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white">
+                                        <span class="absolute -inset-2.5"></span>
+                                        <span class="sr-only">Close panel</span>
+                                        <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div class="flex h-full flex-col overflow-y-auto py-6 shadow-xl dark:bg-gray-800">
+                                    @*  <div class="px-4 sm:px-6">
+                                        <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                                            @if (_ownerInfo?.Logo != null)
+                                            {
+                                                <img src="@_ownerInfo.Logo.ConvertByteArrayToImage()"
+                                                alt="Logo"
+                                                class="w-12 h-12 rounded-full border border-white shadow-md" />
+                                            }
+
+                                            <h2 class="font-medium text-3xl text-white" id="slide-over-title">
+                                                @(_ownerInfo?.OwnerName ?? "صرافی")
+                                            </h2>
+                                        </div>
+                                    </div> *@
+
+                                    <div class="px-4 sm:px-6">
+                                        <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                                            <h2 class="font-medium text-3xl text-white" id="slide-over-title">
+                                                صفحات
+                                            </h2>
+                                        </div>
+                                    </div> 
+
+
+                                    <div class="relative mt-6 flex-1 px-4 sm:px-6">
+                                        <!-- mobile navbar items-->
+                                        <div class="items-center justify-between w-full ">
+                                            <ul class="flex flex-col space-y-2 font-medium w-full h-auto bg-gray-50 rtl:space-x-reverse dark:bg-gray-800">
+
+                                                <!-- Main Nav Item -->
+                                                <li @onclick="handleDrawer">
+                                                    <CustomNavLink FontSize="2xl" Title="داشبورد" Href="/" />
+                                                </li>
+
+                                                <!-- ثبت تراکنش Section -->
+                                                <li>
+                                                    <div onclick="toggle('main-menu', this)" class="flex justify-between items-center py-2 px-3 hover:bg-[#243048] cursor-pointer rounded-sm text-white">
+                                                        <span class="text-2xl font-medium">ثبت تراکنش</span>
+                                                        <svg class="w-5 h-5 text-white transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M6 9l6 6 6-6" />
+                                                        </svg>
+                                                    </div>
+
+                                                    <!-- Level 1 Submenu -->
+                                                    <ul id="main-menu" class="hidden mt-2 pr-2 space-y-1 text-white">
+
+                                                        <!-- مشتریان Section (Level 2) -->
+                                                        <li>
+                                                            <div onclick="toggle('submenu-customers', this)" class="flex justify-between items-center py-2 px-3 hover:bg-[#243048] cursor-pointer rounded-sm">
+                                                                <span class="text-xl">مشتریان</span>
+                                                                <svg class="w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </div>
+
+                                                            <!-- Level 2 Submenu -->
+                                                            <ul id="submenu-customers" class="hidden pr-3 mt-1 space-y-1">
+                                                                @foreach (var item in NavItemsHelper.CustomerTransactionsRegistration)
+                                                                {
+                                                                    <li @onclick="handleDrawer">
+                                                                        <CustomNavLink FontSize="lg" Href="@item.Href" Title="@item.Name" />
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </li>
+
+                                                        <!-- دفتر Section (Level 2) -->
+                                                        <li>
+                                                            <div onclick="toggle('submenu-office', this)" class="flex justify-between items-center py-2 px-3 hover:bg-[#243048] cursor-pointer rounded-sm">
+                                                                <span class="text-xl">دفتر</span>
+                                                                <svg class="w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </div>
+
+                                                            <!-- Level 2 Submenu -->
+                                                            <ul id="submenu-office" class="hidden pl-6 mt-1 space-y-1">
+                                                                @foreach (var item in NavItemsHelper.OfficeTransactionsRegistration)
+                                                                {
+                                                                    <li @onclick="handleDrawer">
+                                                                        <CustomNavLink FontSize="lg" Href="@item.Href" Title="@item.Name" />
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </li>
+                                                    </ul>
+                                                </li>
+
+                                                <li>
+                                                    <details class="group [&_summary::-webkit-details-marker]:hidden">
+                                                        <summary class="flex cursor-pointer items-center justify-between block py-2 px-3 text-white rounded-sm hover:bg-[#243048]">
+                                                            <span class="text-2xl font-medium"> دفتر کل </span>
+                                                            <span class="shrink-0 transition duration-300 group-open:-rotate-180">
+                                                                <svg class="w-5 h-5 text-white transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </span>
+                                                        </summary>
+
+                                                        <ul class="mt-2 space-y-1 px-4 text-white">
+                                                            @foreach (var item in NavItemsHelper.GeneralLedger)
+                                                            {
+                                                                <li @onclick="handleDrawer">
+                                                                    <CustomNavLink FontSize="xl" Href="@item.Href" Title="@item.Name" />
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </details>
+                                                </li>
+
+
+                                                <li>
+                                                    <details class="group [&_summary::-webkit-details-marker]:hidden">
+                                                        <summary class="flex cursor-pointer items-center justify-between block py-2 px-3 text-white rounded-sm hover:bg-[#243048]">
+                                                            <span class="text-2xl font-medium"> روزنامه </span>
+                                                            <span class="shrink-0 transition duration-300 group-open:-rotate-180">
+                                                                <svg class="w-5 h-5 text-white transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </span>
+                                                        </summary>
+
+                                                        <ul class="mt-2 space-y-1 px-4 text-white">
+                                                            @foreach (var item in NavItemsHelper.Magazine)
+                                                            {
+                                                                <li @onclick="handleDrawer">
+                                                                    <CustomNavLink FontSize="xl" Href="@item.Href" Title="@item.Name" />
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </details>
+                                                </li>
+
+                                                <li>
+                                                    <details class="group [&_summary::-webkit-details-marker]:hidden">
+                                                        <summary class="flex cursor-pointer items-center justify-between block py-2 px-3 text-white rounded-sm hover:bg-[#243048]">
+                                                            <span class="text-2xl font-medium"> ارزها </span>
+                                                            <span class="shrink-0 transition duration-300 group-open:-rotate-180">
+                                                                <svg class="w-5 h-5 text-white transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </span>
+                                                        </summary>
+
+                                                        <ul class="mt-2 space-y-1 px-4 text-white">
+                                                            @foreach (var item in NavItemsHelper.CurrencySectionItems)
+                                                            {
+                                                                <li @onclick="handleDrawer">
+                                                                    <CustomNavLink FontSize="xl" Href="@item.Href" Title="@item.Name" />
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </details>
+                                                </li>
+
+                                                <li>
+                                                    <details class="group [&_summary::-webkit-details-marker]:hidden">
+                                                        <summary class="flex cursor-pointer items-center justify-between block py-2 px-3 text-white rounded-sm hover:bg-[#243048]">
+                                                            <span class="text-2xl font-medium"> تنظیمات </span>
+                                                            <span class="shrink-0 transition duration-300 group-open:-rotate-180">
+                                                                <svg class="w-5 h-5 text-white transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M6 9l6 6 6-6" />
+                                                                </svg>
+                                                            </span>
+                                                        </summary>
+
+                                                        <ul class="mt-2 space-y-1 px-4 text-white">
+                                                            @foreach (var item in NavItemsHelper.Settings)
+                                                            {
+                                                                <li @onclick="handleDrawer">
+                                                                    <CustomNavLink FontSize="xl" Href="@item.Href" Title="@item.Name" />
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </details>
+                                                </li>
+
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</nav>
+
+
+
+@code {
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState?> authState { get; set; }
+
+    private OwnerInfo _ownerInfo = new();
+
+    private string? userName;
+
+    private bool isAuthenticated;
+
+    private bool isMenuOpen = false;
+
+    private bool subMenu = false;
+
+    private bool Drawer = false;
+
+    private string? _jwtToken;
+
+    private int _userId { get; set; }
+
+    private string? _appName { get; set; }
+
+    // private bool _ownerInfoLoaded = false;
+
+
+    private List<MenuItems> menuItems = new List<MenuItems>
+            {
+        new MenuItems { Name = "داشبورد", Href = "/"},
+        new MenuItems { Name = "ثبت تراکنش", SubMenu = NavItemsHelper.CustomerTransactionsRegistration},
+        new MenuItems { Name = "دفتر کل", SubMenu = NavItemsHelper.GeneralLedger},
+        new MenuItems { Name = "روزنامه", SubMenu = NavItemsHelper.Magazine },
+        new MenuItems { Name = "ارزها", SubMenu = NavItemsHelper.CurrencySectionItems},
+        new MenuItems { Name = "تنظیمات", SubMenu = NavItemsHelper.Settings},
+    };
+
+    #endregion
+
+    #region Private Methods
+
+    private void CloseDrawer()
+    {
+        Drawer = false;
+    }
+
+    // private void handleDrawer()
+    // {
+    //     Drawer = !Drawer;
+    // }
+
+    private void handleDrawer()
+    {
+        Drawer = !Drawer;
+
+        // Console.WriteLine("Drawer is clicked");
+
+        // if (Drawer && !_ownerInfoLoaded)
+        // {
+        //     await LoadOwnerInfo();
+        //     Console.WriteLine("Owner info loaded successfully");
+        //     _ownerInfoLoaded = true;
+
+        //     Optional: delay to allow sidebar transition first
+        //     await Task.Delay(200);
+        // }
+
+        // StateHasChanged(); trigger UI update
+    }
+
+
+    private void handleSubMenu()
+    {
+        // subMenu = !subMenu;
+    }
+
+    private void HandleMenu()
+    {
+        isMenuOpen = !isMenuOpen; // Toggle the menu visibility
+    }
+
+    private async Task LoadOwnerInfo()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<OwnerInfo>>("api/Settings/OwnerInfo");
+
+            if (response != null && response.Success)
+            {
+                if (response.Data != null)
+                {
+                    _ownerInfo = response.Data;
+                }
+            }
+            else
+            {
+                toastService.ShowError(response.Message);
+            }
+        }
+        catch
+        {
+            toastService.ShowError("خطا در دریافت اطلاعات");
+        }
+    }
+
+    #endregion
+
+    #region Life Cycles
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuth = await authState;
+        
+        isAuthenticated = isAuth.User.Identity.IsAuthenticated;
+
+        if (!isAuthenticated)
+        {
+            return;
+        }
+
+        isAuthenticated = true;
+
+        _userId = int.Parse(isAuth.ExtractUserIdFromToken());
+        _jwtToken = isAuth.ExtractJWTFromToken();
+
+        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+             AuthenticationHeaderValue("Bearer", _jwtToken);
+        Console.WriteLine("Sidebar has been rendered");
+
+        // await LoadOwnerInfo();
+
+    }
+
+    #endregion
+
+}

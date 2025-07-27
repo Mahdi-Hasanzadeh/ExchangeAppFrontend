@@ -1,0 +1,9 @@
+﻿<div class="flex flex-col items-center justify-center h-48 space-y-3 text-center">
+    <i class="bi bi-database-exclamation animate-pulse text-4xl text-gray-300"></i>
+    <span class="text-gray-500 text-lg">@Content</span>
+</div>
+
+@code {
+    [Parameter]
+    public string Content { get; set; } = "هیچ داده‌ای یافت نشد.";
+}

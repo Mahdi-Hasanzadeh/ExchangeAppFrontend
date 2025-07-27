@@ -1,0 +1,166 @@
+﻿@using Shared.DTOs.Report
+@using Shared.DTOs.TransactionsDTOs
+@inject IJSRuntime JS
+
+<div class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm z-50 transition-opacity duration-300"
+     style="opacity: @(IsVisible ? "1" : "0"); pointer-events: @(IsVisible ? "auto" : "none");">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-[90%] max-w-7xl transform transition-all duration-300 scale-95 overflow-auto max-h-[90vh]"
+         style="transform: scale(@(IsVisible ? "1" : "0.95")); opacity:@(IsVisible ? "1" : "0");">
+
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center border-b pb-4">
+            <h5 class="text-xl font-semibold text-indigo-600">🖨️  رسید تراکنش ها</h5>
+            <button type="button" class="text-gray-500 hover:text-gray-700 transition-colors absolute top-3 left-3" @onclick="CloseModal">✖</button>
+        </div>
+
+        <div class="py-4 text-center" id="printContent">
+            <div class="mt-6 text-gray-700">
+
+                <table class="w-full border-collapse text-center text-md">
+                    <caption class="caption transaction-report-date text-xl font-semibold text-indigo-600 text-right">
+                        <p>از تاریخ : @FromDate</p>
+                        <p>تا تاریخ : @ToDate</p>
+                    </caption>
+                    <thead>
+                        <tr style="background-color: #f0f0f0;">
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">شماره</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">نوع تراکنش</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">نوع معامله</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">مقدار</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">ارز</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">شرح</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">توضیحات</th>
+                            <th style="font-weight: bolder; padding: 12px; text-align: right; white-space: nowrap; border: 1px solid gray;">تاریخ</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @for (int i = 0; i < TransactionDetails.Count; i++)
+                        {
+                            var transaction = TransactionDetails[i];
+                            var background = i % 2 == 0 ? "#f0f0f0" : "white";
+
+                            <tr style="background-color: @background;">
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @(i + 1)
+                                </td>
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @Expressions.TransactionTypeDictionary[transaction.TransactionType]
+                                </td>
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @Expressions.DealTypeDictionary[transaction.DealType]
+                                </td>
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @if (transaction.Amount >= 0)
+                                    {
+                                        @transaction.Amount.GetFormattedValue()
+
+                                    }
+                                    else
+                                    {
+                                        @transaction.Amount.GetFormattedAbsoluteValue()
+                                        <span>-</span>
+                                    }
+                                </td>
+
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @_currenciesList[transaction.CurrencyId].Name
+                                </td>
+
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @transaction.DepositOrWithdrawBy
+                                </td>
+
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @transaction.Description
+                                </td>
+
+                                <td style="padding: 12px; border: 1px solid gray;">
+                                    @transaction.CreatedDate.ToAfghanistanCalendarDateOnly()
+                                </td>
+
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex flex-wrap justify-center space-x-2 gap-2 border-t pt-3">
+            <DangerButton ButtonType="button" OnClick="CloseModal" Content="انصراف" />
+            <SuccessButton ButtonType="button" OnClick="Print" Content="چاپ" />
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string FromDate { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ToDate { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<TransactionHistoryDTO> TransactionDetails { get; set; }
+
+    [Parameter]
+    public string CustomerName { get; set; }
+
+    [Parameter]
+    public Dictionary<int, CurrencyDTO> _currenciesList { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsVisible { get; set; }
+
+    public void Show()
+    {
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        IsVisible = false;
+        OnClose.InvokeAsync();
+    }
+
+    private OwnerInfo _ownerInfo = new();
+
+    private async Task LoadOwnerInfo()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<OwnerInfo>>("api/Settings/OwnerInfo");
+
+            if (response != null && response.Success)
+            {
+                if (response.Data != null)
+                {
+                    _ownerInfo = response.Data;
+                }
+            }
+            else
+            {
+                toastService.ShowError(response.Message);
+            }
+        }
+        catch
+        {
+            toastService.ShowError("خطا در دریافت اطلاعات");
+        }
+    }
+
+    private async Task Print()
+    {
+        await LoadOwnerInfo();
+
+        var ownerName = _ownerInfo.OwnerName;
+        var logo = _ownerInfo.Logo == null ? null : _ownerInfo.Logo.ConvertByteArrayToImage();
+
+        await JS.InvokeVoidAsync("printListOfElements", "printContent",ownerName,logo);
+    }
+}

@@ -1,0 +1,24 @@
+﻿@* <NavLink Match="NavLinkMatch.All" href="@Href"
+         class=@($"block rounded-lg px-2 py-2 text-{FontSize} font-medium text-white hover:bg-[#243048]")>
+    @Title
+</NavLink> *@
+
+<NavLink Match="NavLinkMatch.All"
+         href="@Href"
+         class=@($"block rounded-lg px-2 py-2 text-{FontSize} font-medium text-white hover:bg-[#243048]")
+         ActiveClass="bg-gray-900 font-bold">
+    @Title
+</NavLink>
+
+
+@code {
+    [Parameter]
+    public string Href { get; set; } = "#";
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string FontSize { get; set; } = "2xl";
+
+}

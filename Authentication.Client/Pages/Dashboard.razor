@@ -1,0 +1,658 @@
+﻿@page "/"
+@rendermode InteractiveWebAssembly
+@using Authentication.Client.Pages.Modals.Dashboard
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JS
+
+
+<PageTitle>داشبورد</PageTitle>
+
+@if (!OperatingSystem.IsBrowser())
+{
+    <LoadingWithImage />
+}
+else
+{
+    <AuthorizeView Roles="@UserRole.SuperAdmin.ToString()">
+        <Authorizing>
+            <LoadingWithImage Content="در حال تایید هویت شما..." />
+        </Authorizing>
+        <NotAuthorized>
+            <NoPermission />
+        </NotAuthorized>
+        <Authorized>
+            @* <p>You are logged in as @context.User.Identity!.Name</p> *@
+            <h2 class="text-2xl text-slate-900 text-center">داشبورد</h2>
+            <CustomToast />
+
+            <style>
+                /* Smooth height transition for collapse content */
+                .collapse-content {
+                    overflow: hidden;
+                    transition: max-height 0.4s ease;
+                }
+
+                    .collapse-content.open {
+                        max-height: 1000px; /* large enough to fit content */
+                    }
+
+                    .collapse-content.closed {
+                        max-height: 0;
+                    }
+
+                /* Smooth rotation for arrow icon */
+                .rotate-arrow {
+                    transition: transform 0.3s ease;
+                }
+
+                    .rotate-arrow.open {
+                        transform: rotate(180deg);
+                    }
+            </style>
+
+            <div class="container mx-auto p-4 space-y-8">
+
+                <CollapsibleCard Title="وضعیت مالی"
+                                 IsOpen="@IsSectionOneOpen"
+                                 Icon="bi bi-cash-coin"
+                                 OnToggle="ToggleSectionOne">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                        <button @onclick="TreasureModalHandler" class="dash-card relative group rounded-xl p-6 hover:shadow-lg transition-transform hover:scale-105 bg-white border border-gray-200 shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-purple-600 via-indigo-500 to-blue-500 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-bank2 text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-2xl mb-1">صندوق</p>
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </button>
+
+                        <button @onclick="AccountModalHandler" class="dash-card relative group rounded-xl p-6 hover:shadow-lg transition-transform hover:scale-105 bg-white border border-gray-200 shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-green-400 via-teal-500 to-cyan-500 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-cash text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-2xl mb-1">حسابات</p>
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </button>
+
+                        <button @onclick="TodaysTransactionsModalHandler" class="dash-card relative group rounded-xl p-6 hover:shadow-lg transition-transform hover:scale-105 bg-white border border-gray-200 shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-yellow-400 via-orange-400 to-red-400 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-arrow-down-up text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-2xl mb-1">مجموع رسید و برداشت</p>
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </button>
+
+                        <button @onclick="TodaysBuySellModalHandler" class="dash-card relative group rounded-xl p-6 hover:shadow-lg transition-transform hover:scale-105 bg-white border border-gray-200 shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-pink-500 via-red-500 to-rose-600 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-arrow-repeat text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-2xl mb-1">مجموع خرید و فروش ارز</p>
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </button>
+                    </div>
+                </CollapsibleCard>
+
+                <CollapsibleCard Title="آمار کلی"
+                                 IsOpen="@IsSectionTwoOpen"
+                                 Icon="bi bi-clipboard-data-fill"
+                                 OnToggle="ToggleSectionTwo">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                        <!-- Customer Card -->
+                        <div class="dash-card relative group rounded-xl p-6 border border-gray-200 shadow-md bg-white">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-blue-500 to-blue-400 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-people-fill text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-lg mb-1">تعداد مشتریان</p>
+                                    <h3 class="text-gradient text-3xl font-bold">@_customersTotal</h3>
+                                    @* <div class="text-green-500 text-sm mt-2">
+                                        <i class="bi bi-arrow-up-short"></i> 12.5% از ماه گذشته
+                                    </div> *@
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </div>
+
+                        <!-- Transaction Card -->
+                        <div class="dash-card relative group rounded-xl p-6 border border-gray-200 shadow-md bg-white">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-amber-500 to-amber-400 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-cash-coin text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-lg mb-1">تعداد تراکنش ها</p>
+                                    <h3 class="text-gradient text-3xl font-bold">@_transactionsTotal</h3>
+                                    @* <div class="text-red-500 text-sm mt-2">
+                                        <i class="bi bi-arrow-down-short"></i> 3.2% از هفته گذشته
+                                    </div> *@
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </div>
+
+                        <!-- Balance Card -->
+                        @* <div class="dash-card relative group rounded-xl p-6 border border-gray-200 shadow-md bg-white">
+                                <div class="flex items-center gap-4">
+                                    <div class="icon-container bg-gradient-to-tr from-green-500 to-green-400 text-white rounded-lg flex items-center justify-center">
+                                        <i class="bi bi-bank2 text-2xl"></i>
+                                    </div>
+                                    <div class="flex-1 text-right">
+                                        <p class="text-lg mb-1">بیلانس</p>
+                                        <h3 class="text-gradient text-3xl font-bold">$124k</h3>
+                                        <div class="text-green-500 text-sm mt-2">
+                                        <i class="bi bi-arrow-up-short"></i> 8.1% رشد سالانه
+                                    </div> 
+                                    </div>
+                                </div>
+                                <div class="wave-overlay"></div>
+                            </div> *@
+                    </div>
+                </CollapsibleCard>
+
+                <CollapsibleCard Title="گراف"
+                                 IsOpen="@IsSectionThreeOpen"
+                                 Icon="bi bi-bar-chart-line-fill"
+                                 OnToggle="ToggleSectionThree">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                        <button @onclick="ShowGraphHandler" class="dash-card relative group rounded-xl p-6 hover:shadow-lg transition-transform hover:scale-105 bg-white border border-gray-200 shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="icon-container bg-gradient-to-tr from-yellow-400 via-orange-400 to-red-400 text-white rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-arrow-down-up text-2xl"></i>
+                                </div>
+                                <div class="flex-1 text-right">
+                                    <p class="text-2xl mb-1">گراف صندوق</p>
+                                </div>
+                            </div>
+                            <div class="wave-overlay"></div>
+                        </button>
+                    </div>
+                </CollapsibleCard>
+
+                <CollapsibleCard Title="سود و زیان"
+                                 Icon="bi bi-file-bar-graph-fill"
+                                 IsOpen="@IsSectionFourOpen"
+                                 OnToggle="ToggleSectionFour">
+
+                    @if (_profitLossSummary == null)
+                    {
+                        <div class="flex flex-col items-center justify-center h-48 space-y-3 text-center">
+                            <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-gray-500 text-lg">در حال دریافت اطلاعات...</span>
+                        </div>
+                    }
+                    else if (!_profitLossSummary.Any())
+                    {
+                        <NoDataFound />
+                    }
+                    else
+                    {
+                        <div class="mt-6 overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+                            <table class="min-w-full text-sm md:text-base text-right divide-y divide-gray-200">
+                                @* <thead class="bg-gradient-to-r from-sky-600 to-cyan-700 text-white"> *@
+                                <thead class="card-color text-white">
+
+                                    <tr>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">ارز</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">کد</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">واریزی</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">برداشت</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">سود/زیان نقدی</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">خرید</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">فروش</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">سود/زیان معامله</th>
+                                        <th class="px-5 py-4 font-semibold whitespace-nowrap">سود/زیان کل</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-xl">
+                                    @foreach (var item in _profitLossSummary)
+                                    {
+                                        <tr class="hover:bg-indigo-50 transition-colors duration-150">
+                                            <td class="px-5 py-4 font-semibold text-gray-800 flex items-center gap-2">
+                                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                                @item.CurrencyName
+                                            </td>
+                                            <td class="px-5 py-4">
+                                                <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-md text-xs font-medium">@item.CurrencyCode</span>
+                                            </td>
+                                            <td class="px-5 py-4 font-medium text-blue-600">@item.TotalDeposit.ToFormattedDecimal()</td>
+                                            <td class="px-5 py-4 font-medium text-rose-600">@item.TotalWithdraw.ToFormattedDecimal()</td>
+                                            <td class="px-5 py-4 font-medium @(item.NetCash >= 0 ? "text-green-600" : "text-rose-600")">
+                                                @item.NetCash.ToFormattedDecimal()
+                                            </td>
+                                            <td class="px-5 py-4 font-medium text-indigo-600">@item.TotalBuy.ToFormattedDecimal()</td>
+                                            <td class="px-5 py-4 font-medium text-emerald-600">@item.TotalSell.ToFormattedDecimal()</td>
+                                            <td class="px-5 py-4 font-medium @(item.NetTrade >= 0 ? "text-green-600" : "text-rose-600")">
+                                                @item.NetTrade.ToFormattedDecimal()
+                                            </td>
+                                            <td class="px-5 py-4 font-bold @(item.TotalProfitOrLoss >= 0 ? "text-green-600" : "text-rose-600")">
+                                                <span class="inline-flex items-center">
+                                                    @if (item.TotalProfitOrLoss >= 0)
+                                                    {
+                                                        <i class="bi bi-arrow-up-short ml-1"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-arrow-down-short ml-1"></i>
+                                                    }
+                                                    @item.TotalProfitOrLoss.ToFormattedDecimal()
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="bg-gray-50 text-lg">
+                                    <tr>
+                                        <td colspan="9" class="px-6 py-4 text-center">
+
+                                            <div class="mt-2 text-lg font-bold @(GetTotalProfitLossInUSD() >= 0 ? "text-green-600" : "text-rose-600")">
+                                                <span class="inline-flex items-center">
+                                                    @if (GetTotalProfitLossInUSD() >= 0)
+                                                    {
+                                                        <i class="bi bi-arrow-up-short ml-1"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-arrow-down-short ml-1"></i>
+                                                    }
+                                                    مجموع سود/زیان به دالر: @GetTotalProfitLossInUSD().ToFormattedDecimal()
+                                                </span>
+                                            </div>
+                                            <div class="inline-flex items-center text-indigo-600 font-medium space-x-2">
+                                                <i class="bi bi-info-circle ml-2"></i>
+                                                <span>آخرین بروزرسانی: @DateTime.Now.ToString("HH:mm")</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+
+                            </table>
+                        </div>
+                    }
+
+                </CollapsibleCard>
+            </div>
+
+
+            @if (_accountModalOpen)
+            {
+                <OfficeAccountsModal isModalOpen="@_accountModalOpen" OnClose="AccountModalHandler" />
+            }
+            @if (_treasureModalOpen)
+            {
+                <TreasureyModal isModalOpen="@_treasureModalOpen" OnClose="TreasureModalHandler" />
+            }
+            @if (_todaysTransactionsModalOpen)
+            {
+                <TodayTotalRecieptAndWithdrawalModal isModalOpen="@_todaysTransactionsModalOpen" OnClose="TodaysTransactionsModalHandler" />
+            }
+
+            @if (_todaysBuySellModalOpen)
+            {
+                <TotalCurrencyBuySell isModalOpen="@_todaysBuySellModalOpen" OnClose="TodaysBuySellModalHandler" />
+            }
+
+            @if (_showGraphOpen)
+            {
+                <TreasuryGraphModal isModalOpen="@_showGraphOpen" OnClose="ShowGraphHandler" />
+            }
+
+
+
+        </Authorized>
+
+    </AuthorizeView>
+}
+
+@code {
+
+    #region Private Fields
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    private bool IsSectionOneOpen = true;
+
+    private bool IsSectionTwoOpen = true;
+
+    private bool IsSectionThreeOpen = true;
+
+    private bool IsSectionFourOpen = true;
+
+
+    bool isAuthenticated { get; set; }
+
+    private bool _accountModalOpen { get; set; } = false;
+
+    private bool _treasureModalOpen { get; set; } = false;
+
+    private bool _todaysTransactionsModalOpen { get; set; } = false;
+
+    private bool _todaysBuySellModalOpen { get; set; } = false;
+
+    private bool _showGraphOpen { get; set; } = false;
+
+    private bool isLoading = true; // Initial state is loading
+
+    private int _customersTotal { get; set; }
+
+    private int _transactionsTotal { get; set; }
+
+    private bool _loadingData { get; set; }
+
+    private string _jwtToken { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Private Methods
+
+    private string Format(decimal value) => value.ToString("N2");
+
+    private void ShowGraphHandler()
+    {
+        _showGraphOpen = !_showGraphOpen;
+    }
+
+    private void TodaysBuySellModalHandler()
+    {
+        _todaysBuySellModalOpen = !_todaysBuySellModalOpen;
+    }
+
+    private void TodaysTransactionsModalHandler()
+    {
+        _todaysTransactionsModalOpen = !_todaysTransactionsModalOpen;
+    }
+
+    private void AccountModalHandler()
+    {
+        _accountModalOpen = !_accountModalOpen;
+    }
+
+    private void TreasureModalHandler()
+    {
+        _treasureModalOpen = !_treasureModalOpen;
+    }
+
+    void ToggleSectionOne() => IsSectionOneOpen = !IsSectionOneOpen;
+
+    void ToggleSectionTwo() => IsSectionTwoOpen = !IsSectionTwoOpen;
+
+    void ToggleSectionThree() => IsSectionThreeOpen = !IsSectionThreeOpen;
+
+    void ToggleSectionFour() => IsSectionFourOpen = !IsSectionFourOpen;
+
+    #endregion
+
+
+    #region Life Cycles
+
+    private List<ProfitLossSummaryDTO> _profitLossSummary;
+
+    private async Task FetchProfitLossSummary()
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<ProfitLossSummaryDTO>>>(
+                "api/CustomerTransaction/lossAndBenefit");
+
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(response?.Message ?? "خطا در دریافت اطلاعات");
+                return;
+            }
+
+            _profitLossSummary = response.Data;
+            GetTotalProfitLossInUSD();
+        }
+        catch
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+    }
+
+    public Dictionary<int, CurrencyDetailDTO> _currencyExchangeRate { get; set; } = new();
+
+    private Dictionary<int, CurrencyDTO> _currenciesList { get; set; } = new();
+
+    private async Task FetchCurrencies()
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            // Fetch All currencies
+            string url = $"api/Currency";
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<IEnumerable<CurrencyDTO>>>(url);
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.FailedToLoadCurrencies)]);
+                return;
+            }
+            _currenciesList = response.Data.ToDictionary(item => item.CurrencyId, item => item);
+
+            if (_currenciesList.Count > 0)
+            {
+                await FetchCurrencyExchangeRate();
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+        }
+    }
+
+    private async Task FetchCurrencyExchangeRate()
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            int baseCurrencyId = _currenciesList.Where(c => c.Value.Code == "USD").FirstOrDefault().Key;
+
+            string url = $"api/Currency/currencyDetail/{baseCurrencyId}";
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<IEnumerable<CurrencyDetailDTO>>>(url);
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.FailedToLoadCurrencies)]);
+                return;
+            }
+            foreach (var item in response.Data)
+            {
+                item.ImageString = item.Image != null && item.Image.Length > 0 ?
+                item.Image.ConvertByteArrayToImage() : string.Empty;
+            }
+            _currencyExchangeRate = response.Data.ToDictionary(item => item.TargetCurrencyId, item => item);
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+    }
+
+    private decimal GetTotalProfitLossInUSD()
+    {
+        decimal total = 0;
+
+        if (_profitLossSummary == null || _currencyExchangeRate == null)
+            return total;
+
+        foreach (var item in _profitLossSummary)
+        {
+            var currencyId = item.CurrencyId;
+
+            if (_currencyExchangeRate.TryGetValue(currencyId, out var rate))
+            {
+                var buyValue = (decimal)rate.BuyValue;
+
+                if (currencyId == rate.TargetCurrencyId && currencyId == rate.BaseCurrencyId)
+                {
+                    // This currency is USD itself
+                    total += item.TotalProfitOrLoss;
+                }
+                else if (buyValue > 0)
+                {
+                    total += item.TotalProfitOrLoss / buyValue;
+                }
+                else
+                {
+                    toastService.ShowInfo($"مقدار خرید برای {rate.Name} تنظیم نشده است.");
+                }
+            }
+        }
+
+        return total;
+
+    }
+
+    private async Task FetchCustomersTotal()
+    {
+        try
+        {
+            _loadingData = true;
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            // Fetch All currencies
+            string url = $"api/CustomerAccount/totalCustomer";
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<int>>(url);
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(response.Message);
+                return;
+            }
+
+            _customersTotal = response.Data;
+
+            await FetchTransactionsTotal();
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+            _loadingData = false;
+        }
+    }
+
+    private async Task FetchTransactionsTotal()
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            // Fetch All currencies
+            string url = $"api/CustomerTransaction/transactionsTotal";
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<int>>(url);
+            if (response == null || !response.Success)
+            {
+                toastService.ShowError(response.Message);
+                return;
+            }
+
+            _transactionsTotal = response.Data;
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+    }
+
+    private async Task CreateInitialAccount()
+    {
+        try
+        {
+            _loadingData = true;
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.
+            AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            string url = $"api/CustomerAccount/createInitialAccount";
+
+            List<CurrencyImage> images = new List<CurrencyImage>()
+            {
+                // new CurrencyImage(){Image = usaImage},
+                // new CurrencyImage(){Image = afnImage},
+            };
+
+
+            var result = await _httpClient.PostAsJsonAsync(url, images);
+            var response = await result.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            if (!result.IsSuccessStatusCode || response == null || !response.Success)
+            {
+                toastService.ShowError(response.Message);
+                return;
+            }
+
+            if (response.Message == "alreadyExist") return;
+
+            toastService.ShowInfo("حسابات دفتری شما با موفقیت ساخته شد.");
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(Helper.ErrorsDictionary[nameof(ErrorList.ServerError)]);
+        }
+        finally
+        {
+            _loadingData = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState; // Wait for authentication to complete
+
+        isAuthenticated = authState.User.Identity is not null && authState.User.Identity.IsAuthenticated;
+        if (!isAuthenticated)
+        {
+            isLoading = false; // Authentication has completed
+            StateHasChanged(); // Force UI update
+            return;
+        }
+        isLoading = false;
+        _jwtToken = authState.ExtractJWTFromToken();
+        var isFirstTimeLogin = authState.ExtractIsFirstTimeLogin();
+
+        if (isFirstTimeLogin != null && isFirstTimeLogin == true)
+        {
+            await CreateInitialAccount();
+        }
+        await FetchCustomersTotal();
+        await FetchCurrencies();
+
+        await FetchProfitLossSummary();
+
+    }
+
+    #endregion
+}

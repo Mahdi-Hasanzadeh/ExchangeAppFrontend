@@ -1,0 +1,165 @@
+﻿@using Shared.DTOs.UserDTOs
+@using Shared.Roles
+
+
+<EditForm Model="EditableSubUser" OnValidSubmit="HandleValidSubmit" class="space-y-4 max-w-2xl mx-auto bg-white dark:bg-gray-100 p-6 rounded-lg shadow-md">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-red-500" />
+
+    <div>
+        <label class="block text-gray-700 dark:text-slate-900">نام کاربری <span class="text-red-500 text-sm">*</span></label>
+        <InputText @bind-Value="EditableSubUser.Username" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+        <ValidationMessage For="() => EditableSubUser.Username" class="text-red-500 text-sm" />
+    </div>
+
+    <div>
+        <label class="block text-gray-700 dark:text-slate-900">رمز عبور (اگر نمی‌خواهید تغییر دهید خالی بگذارید)</label>
+        <InputText type="password" @bind-Value="EditableSubUser.Password" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+        <ValidationMessage For="() => EditableSubUser.Password" class="text-red-500 text-sm" />
+    </div>
+
+    <div>
+        <label class="block text-gray-700 dark:text-slate-900">ایمیل</label>
+        <InputText @bind-Value="EditableSubUser.Email" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+        <ValidationMessage For="() => EditableSubUser.Email" class="text-red-500 text-sm" />
+    </div>
+
+    <div>
+        <label class="block text-gray-700 dark:text-slate-900">نقش <span class="text-red-500 text-sm">*</span></label>
+        <InputSelect @bind-Value="EditableSubUser.Role" class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-400 outline-none">
+            @foreach (UserRole role in Enum.GetValues(typeof(UserRole)))
+            {
+                @if (role != UserRole.Owner)
+                {
+                    <option value="@role">@Expressions.UserRoleDictionary[role]</option>
+                }
+            }
+        </InputSelect>
+        <ValidationMessage For="() => EditableSubUser.Role" class="text-red-500 text-sm" />
+    </div>
+
+    <!-- Image Upload -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+            <label class="block text-gray-700 dark:text-slate-900">آپلود تصویر</label>
+            <UploadButton SelectedFileName="@_selectedFileName" OnChange="@HandleImageChange" />
+            <ValidationMessage For="() => EditableSubUser.Image" class="text-red-500 text-sm" />
+        </div>
+        <div>
+            @if (!string.IsNullOrEmpty(_previewImage))
+            {
+                <img src="@_previewImage" alt="پیش‌نمایش" class="mt-2 rounded-md shadow-md w-32 h-32 object-cover" />
+            }
+        </div>
+    </div>
+
+    <div class="flex justify-start gap-4 mt-6">
+        <MdSuccessButton IsDisabled="@_isDisabled" ButtonType="submit" Content="ویرایش کاربر" />
+        <MdDangerButton ButtonType="button" OnClick="@OnCancel" Content="انصراف" />
+    </div>
+</EditForm>
+
+@code {
+
+    #region Private Fields
+
+    private bool _isDisabled = false;
+
+    private string _selectedFileName = "هیچ فایلی انتخاب نشده است";
+
+    private string? _previewImage;
+
+    #endregion
+
+    #region Public Fields
+
+    [Parameter]
+    public EditSubUserDTO EditableSubUser { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<bool> OnEditCompleted { get; set; }
+
+    #endregion
+
+    #region Private Methods
+
+    private async Task HandleImageChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _selectedFileName = file.Name;
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            toastService.ShowError("حجم تصویر نباید بیشتر از 5 مگابایت باشد.");
+            _previewImage = null;
+            EditableSubUser.Image = null;
+            return;
+        }
+
+        using var stream = new MemoryStream();
+        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
+        EditableSubUser.Image = stream.ToArray();
+
+        _previewImage = $"data:{file.ContentType};base64,{Convert.ToBase64String(EditableSubUser.Image)}";
+
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _isDisabled = true;
+            // Prepare token if needed here
+            // _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", yourToken);
+
+            var response = await _httpClient.PutAsJsonAsync($"api/User/updateSubUser/{EditableSubUser.Id}", EditableSubUser);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            if (response.IsSuccessStatusCode && result != null && result.Success)
+            {
+                toastService.ShowSuccess("کاربر با موفقیت ویرایش شد.");
+                await OnEditCompleted.InvokeAsync(true);
+            }
+            else
+            {
+                toastService.ShowError(result?.Message ?? "خطا در ویرایش کاربر.");
+            }
+        }
+        catch (Exception)
+        {
+            toastService.ShowError("خطای سرور رخ داده است.");
+        }
+        finally
+        {
+            _isDisabled = false;
+        }
+    }
+
+    private async void OnCancel()
+    {
+        await OnEditCompleted.InvokeAsync(false);
+    }
+
+    #endregion
+
+    #region Life Cycle Methods
+
+    protected override void OnParametersSet()
+    {
+        // Set preview if image exists
+        if (EditableSubUser.Image != null && EditableSubUser.Image.Length > 0)
+        {
+            _previewImage = $"data:image/jpeg;base64,{Convert.ToBase64String(EditableSubUser.Image)}";
+            _selectedFileName = "تصویر فعلی";
+        }
+        else
+        {
+            _previewImage = null;
+            _selectedFileName = "هیچ فایلی انتخاب نشده است";
+        }
+    }
+
+    #endregion
+
+}
