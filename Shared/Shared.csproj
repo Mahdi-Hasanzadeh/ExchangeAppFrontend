@@ -21,4 +21,13 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="libman.json" />
+  </ItemGroup>
+  <Target Name="ExcludeLibmanFileFromPublish" AfterTargets="PrepareForPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="libman.json" />
+    </ItemGroup>
+  </Target>
+
 </Project>
